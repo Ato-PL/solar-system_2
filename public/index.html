@@ -3,7 +3,7 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eksplorator Układu Słonecznego</title>
+  <title>Eksplorator Galaktyki 3D</title>
   <script src="/_sdk/element_sdk.js"></script>
   <style>
     body {
@@ -123,6 +123,72 @@
       backdrop-filter: blur(10px);
     }
 
+    #system-selector {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .system-btn {
+      padding: 12px 20px;
+      background: rgba(255, 193, 7, 0.2);
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .system-btn:hover {
+      background: rgba(255, 193, 7, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+    }
+
+    .system-btn.active {
+      background: #ffc107;
+      color: #000000;
+      box-shadow: 0 4px 12px rgba(255, 193, 7, 0.6);
+    }
+
+    #mode-selector {
+      position: absolute;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .mode-btn {
+      padding: 10px 16px;
+      background: rgba(76, 175, 80, 0.2);
+      border: 2px solid #4caf50;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .mode-btn:hover {
+      background: rgba(76, 175, 80, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .mode-btn.active {
+      background: #4caf50;
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.6);
+    }
+
     .control-title {
       font-size: 16px;
       font-weight: bold;
@@ -219,6 +285,108 @@
       0%, 100% { opacity: 0.3; }
       50% { opacity: 1; }
     }
+
+    @keyframes planetRotation {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes atmosphereShimmer {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.7; }
+    }
+
+    #mission-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      border: 2px solid #4caf50;
+      max-width: 500px;
+      pointer-events: auto;
+      backdrop-filter: blur(15px);
+      display: none;
+    }
+
+    #mission-panel.active {
+      display: block;
+    }
+
+    .mission-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 0 0 20px 0;
+      color: #4caf50;
+      text-align: center;
+    }
+
+    .mission-objective {
+      background: rgba(76, 175, 80, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      border-left: 4px solid #4caf50;
+    }
+
+    .mission-progress {
+      background: rgba(255, 255, 255, 0.1);
+      height: 8px;
+      border-radius: 4px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+
+    .mission-progress-bar {
+      background: #4caf50;
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .terraform-controls {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+
+    .terraform-btn {
+      padding: 8px 16px;
+      background: rgba(33, 150, 243, 0.2);
+      border: 1px solid #2196f3;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .terraform-btn:hover {
+      background: rgba(33, 150, 243, 0.4);
+    }
+
+    .terraform-btn.active {
+      background: #2196f3;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #ffffff;
+      font-size: 24px;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+
+    .close-btn:hover {
+      opacity: 1;
+    }
   </style>
   <style>@view-transition { navigation: auto; }</style>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
@@ -230,8 +398,12 @@
    <canvas id="canvas-3d"></canvas>
    <div id="ui-overlay">
     <div id="header">
-     <h1 id="title">Eksplorator Układu Słonecznego</h1>
-     <p id="subtitle">Witaj w kosmosie! Użyj myszki do obracania widoku</p>
+     <h1 id="title">Eksplorator Galaktyki 3D</h1>
+     <p id="subtitle">Odkryj tajemnice trzech układów planetarnych!</p>
+    </div>
+    <div id="system-selector"><button class="system-btn active" data-system="solar">Układ Słoneczny</button> <button class="system-btn" data-system="kepler">Kepler-442</button> <button class="system-btn" data-system="proxima">Proxima Centauri</button>
+    </div>
+    <div id="mode-selector"><button class="mode-btn active" data-mode="education">Tryb Edukacyjny</button> <button class="mode-btn" data-mode="mission">Tryb Misji</button> <button class="mode-btn" data-mode="terraform">Terraformacja</button>
     </div>
     <div id="controls-panel">
      <div class="control-title">
@@ -260,15 +432,28 @@
     </div>
     <div id="planet-buttons"><button class="planet-btn active" data-planet="earth">Ziemia</button> <button class="planet-btn" data-planet="moon">Księżyc</button> <button class="planet-btn" data-planet="mars">Mars</button>
     </div>
+    <div id="mission-panel"><button class="close-btn">×</button>
+     <h2 class="mission-title">Misja: Eksploracja Marsa</h2>
+     <div class="mission-objective"><strong>Cel:</strong> Zbadaj powierzchnię Marsa i znajdź ślady wody
+     </div>
+     <div class="mission-progress">
+      <div class="mission-progress-bar" style="width: 0%"></div>
+     </div>
+     <div id="mission-content">
+      <p>Kliknij na Mars, aby rozpocząć misję!</p>
+     </div>
+     <div class="terraform-controls" style="display: none;"><button class="terraform-btn" data-action="atmosphere">Dodaj Atmosferę</button> <button class="terraform-btn" data-action="water">Dodaj Wodę</button> <button class="terraform-btn" data-action="vegetation">Dodaj Roślinność</button> <button class="terraform-btn" data-action="temperature">Podgrzej Planetę</button>
+     </div>
+    </div>
    </div>
   </div>
   <script>
     const defaultConfig = {
-      game_title: "Eksplorator Układu Słonecznego",
-      welcome_message: "Witaj w kosmosie! Użyj myszki do obracania widoku",
-      earth_description: "Nasza niebieska planeta, jedyne znane miejsce we wszechświecie zamieszkane przez życie. Pokryta oceanami i atmosferą bogatą w tlen.",
-      moon_description: "Naturalny satelita Ziemi, oddalony o 384,400 km. Jego grawitacja wpływa na pływy oceanów na Ziemi.",
-      mars_description: "Czerwona planeta, czwarta od Słońca. Posiada dwa małe księżyce: Fobos i Deimos. Cel przyszłych misji załogowych.",
+      game_title: "Eksplorator Galaktyki 3D",
+      welcome_message: "Odkryj tajemnice trzech układów planetarnych!",
+      education_mode_title: "Tryb Edukacyjny",
+      mission_mode_title: "Tryb Misji", 
+      terraform_mode_title: "Symulacja Terraformacji",
       background_color: "#000000",
       primary_color: "#4fc3f7",
       text_color: "#ffffff",
@@ -317,58 +502,88 @@
     let lastMouseY = 0;
     let showOrbits = false;
     let selectedPlanet = 'earth';
+    let currentSystem = 'solar';
+    let currentMode = 'education';
+    let missionProgress = 0;
+    let terraformStage = 0;
+    let animationTime = 0;
 
-    const celestialBodies = {
-      sun: {
-        x: 0, y: 0, z: 0,
-        radius: 30,
-        color: '#FDB813',
-        name: 'Słońce'
+    const planetarySystems = {
+      solar: {
+        name: 'Układ Słoneczny',
+        star: { name: 'Słońce', color: '#FDB813', radius: 30 },
+        bodies: {
+          sun: { x: 0, y: 0, z: 0, radius: 30, color: '#FDB813', name: 'Słońce' },
+          earth: {
+            x: 150, y: 0, z: 0, radius: 15, color: '#4169E1', orbitRadius: 150, orbitSpeed: 0.001, angle: 0,
+            name: 'Ziemia', diameter: '12,742 km', distance: '149.6 mln km', period: '365.25 dni', temp: '15°C',
+            description: 'Nasza niebieska planeta, jedyne znane miejsce we wszechświecie zamieszkane przez życie.',
+            atmosphere: true, water: true, life: true
+          },
+          moon: {
+            x: 180, y: 0, z: 0, radius: 5, color: '#C0C0C0', orbitRadius: 30, orbitSpeed: 0.004, angle: 0, parent: 'earth',
+            name: 'Księżyc', diameter: '3,474 km', distance: '384,400 km od Ziemi', period: '27.3 dni', temp: '-53°C',
+            description: 'Naturalny satelita Ziemi, oddalony o 384,400 km. Jego grawitacja wpływa na pływy oceanów.'
+          },
+          mars: {
+            x: 250, y: 0, z: 0, radius: 12, color: '#CD5C5C', orbitRadius: 250, orbitSpeed: 0.0005, angle: Math.PI,
+            name: 'Mars', diameter: '6,779 km', distance: '227.9 mln km', period: '687 dni', temp: '-63°C',
+            description: 'Czerwona planeta, czwarta od Słońca. Cel przyszłych misji terraformacyjnych.',
+            atmosphere: false, water: false, life: false, terraformable: true
+          }
+        }
       },
-      earth: {
-        x: 150, y: 0, z: 0,
-        radius: 15,
-        color: '#4169E1',
-        orbitRadius: 150,
-        orbitSpeed: 0.001,
-        angle: 0,
-        name: 'Ziemia',
-        diameter: '12,742 km',
-        distance: '149.6 mln km',
-        period: '365.25 dni',
-        temp: '15°C',
-        description: defaultConfig.earth_description
+      kepler: {
+        name: 'Kepler-442',
+        star: { name: 'Kepler-442', color: '#FF6B35', radius: 25 },
+        bodies: {
+          star: { x: 0, y: 0, z: 0, radius: 25, color: '#FF6B35', name: 'Kepler-442' },
+          kepler442b: {
+            x: 120, y: 0, z: 0, radius: 18, color: '#8B4513', orbitRadius: 120, orbitSpeed: 0.0015, angle: 0,
+            name: 'Kepler-442b', diameter: '15,318 km', distance: '112.3 mln km', period: '112.3 dni', temp: '233°C',
+            description: 'Superziemia w strefie zamieszkiwalnej. Potencjalnie nadaje się do terraformacji.',
+            atmosphere: false, water: false, life: false, terraformable: true
+          },
+          kepler442c: {
+            x: 200, y: 0, z: 0, radius: 14, color: '#4682B4', orbitRadius: 200, orbitSpeed: 0.0008, angle: Math.PI/2,
+            name: 'Kepler-442c', diameter: '11,200 km', distance: '187.5 mln km', period: '305 dni', temp: '-12°C',
+            description: 'Lodowa planeta z gęstą atmosferą. Może zawierać podziemne oceany.',
+            atmosphere: true, water: true, life: false
+          },
+          asteroid: {
+            x: 280, y: 0, z: 0, radius: 3, color: '#696969', orbitRadius: 280, orbitSpeed: 0.0003, angle: Math.PI,
+            name: 'Pas Asteroid', diameter: '2-50 km', distance: '280 mln km', period: '1,200 dni', temp: '-180°C',
+            description: 'Pas asteroid bogatych w minerały. Źródło surowców do terraformacji.'
+          }
+        }
       },
-      moon: {
-        x: 180, y: 0, z: 0,
-        radius: 5,
-        color: '#C0C0C0',
-        orbitRadius: 30,
-        orbitSpeed: 0.004,
-        angle: 0,
-        parent: 'earth',
-        name: 'Księżyc',
-        diameter: '3,474 km',
-        distance: '384,400 km od Ziemi',
-        period: '27.3 dni',
-        temp: '-53°C',
-        description: defaultConfig.moon_description
-      },
-      mars: {
-        x: 250, y: 0, z: 0,
-        radius: 12,
-        color: '#CD5C5C',
-        orbitRadius: 250,
-        orbitSpeed: 0.0005,
-        angle: Math.PI,
-        name: 'Mars',
-        diameter: '6,779 km',
-        distance: '227.9 mln km',
-        period: '687 dni',
-        temp: '-63°C',
-        description: defaultConfig.mars_description
+      proxima: {
+        name: 'Proxima Centauri',
+        star: { name: 'Proxima Centauri', color: '#DC143C', radius: 20 },
+        bodies: {
+          star: { x: 0, y: 0, z: 0, radius: 20, color: '#DC143C', name: 'Proxima Centauri' },
+          proximab: {
+            x: 80, y: 0, z: 0, radius: 16, color: '#8FBC8F', orbitRadius: 80, orbitSpeed: 0.002, angle: 0,
+            name: 'Proxima b', diameter: '14,100 km', distance: '7.5 mln km', period: '11.2 dni', temp: '-39°C',
+            description: 'Planeta w strefie zamieszkiwalnej czerwonego karła. Może mieć atmosferę.',
+            atmosphere: true, water: false, life: false, terraformable: true
+          },
+          proximac: {
+            x: 140, y: 0, z: 0, radius: 8, color: '#DDA0DD', orbitRadius: 140, orbitSpeed: 0.0006, angle: Math.PI/3,
+            name: 'Proxima c', diameter: '7,800 km', distance: '13.8 mln km', period: '1,928 dni', temp: '-234°C',
+            description: 'Zimna superziemia. Potencjalnie bogata w lód wodny.',
+            atmosphere: false, water: true, life: false
+          },
+          moon1: {
+            x: 100, y: 0, z: 0, radius: 4, color: '#F5DEB3', orbitRadius: 20, orbitSpeed: 0.008, angle: 0, parent: 'proximab',
+            name: 'Proxima b-I', diameter: '2,100 km', distance: '20,000 km od Proxima b', period: '5 dni', temp: '-45°C',
+            description: 'Księżyc Proxima b. Może stabilizować klimat planety macierzystej.'
+          }
+        }
       }
     };
+
+    let celestialBodies = planetarySystems.solar.bodies;
 
     function project3D(x, y, z) {
       const cosX = Math.cos(camera.rotX);
@@ -426,7 +641,8 @@
       ctx.stroke();
     }
 
-    function drawSphere(x, y, radius, color, scale) {
+    function drawSphere(x, y, radius, color, scale, body) {
+      // Podstawowa sfera
       const gradient = ctx.createRadialGradient(
         x - radius * 0.3, y - radius * 0.3, 0,
         x, y, radius
@@ -439,8 +655,38 @@
       ctx.arc(x, y, radius * scale, 0, Math.PI * 2);
       ctx.fill();
 
+      // Animacje powierzchni
+      if (body && body.atmosphere) {
+        const atmosphereOpacity = 0.3 + 0.2 * Math.sin(animationTime * 0.002);
+        ctx.strokeStyle = `rgba(135, 206, 235, ${atmosphereOpacity})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, (radius + 2) * scale, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      if (body && body.water && currentMode === 'terraform') {
+        const waterShimmer = 0.4 + 0.3 * Math.sin(animationTime * 0.003);
+        ctx.fillStyle = `rgba(0, 100, 200, ${waterShimmer})`;
+        ctx.beginPath();
+        ctx.arc(x - radius * 0.2, y + radius * 0.1, radius * 0.3 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (body && body.life) {
+        const lifeGlow = 0.2 + 0.1 * Math.sin(animationTime * 0.001);
+        ctx.strokeStyle = `rgba(0, 255, 0, ${lifeGlow})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * scale, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Standardowa ramka
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
       ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(x, y, radius * scale, 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -464,6 +710,7 @@
 
     function render() {
       ctx.clearRect(0, 0, width, height);
+      animationTime += 16;
 
       updatePositions();
 
@@ -482,7 +729,7 @@
 
       sortedBodies.forEach(({ body, projected }) => {
         if (projected.z > -300) {
-          drawSphere(projected.x, projected.y, body.radius, body.color, projected.scale);
+          drawSphere(projected.x, projected.y, body.radius, body.color, projected.scale, body);
         }
       });
 
@@ -548,6 +795,23 @@
       this.textContent = showOrbits ? 'Ukryj Orbity' : 'Pokaż Orbity';
     });
 
+    // Obsługa selektora układów
+    document.querySelectorAll('.system-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const system = this.dataset.system;
+        switchSystem(system);
+      });
+    });
+
+    // Obsługa selektora trybów
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const mode = this.dataset.mode;
+        switchMode(mode);
+      });
+    });
+
+    // Obsługa przycisków planet
     document.querySelectorAll('.planet-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         const planet = this.dataset.planet;
@@ -555,9 +819,89 @@
       });
     });
 
+    // Obsługa panelu misji
+    document.querySelector('.close-btn').addEventListener('click', function() {
+      document.getElementById('mission-panel').classList.remove('active');
+    });
+
+    // Obsługa terraformacji
+    document.querySelectorAll('.terraform-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const action = this.dataset.action;
+        performTerraform(action);
+      });
+    });
+
+    function switchSystem(systemKey) {
+      currentSystem = systemKey;
+      celestialBodies = planetarySystems[systemKey].bodies;
+      
+      document.querySelectorAll('.system-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.system === systemKey) {
+          btn.classList.add('active');
+        }
+      });
+
+      // Aktualizuj przyciski planet
+      updatePlanetButtons();
+      
+      // Wybierz pierwszą planetę
+      const firstPlanet = Object.keys(celestialBodies).find(key => key !== 'sun' && key !== 'star');
+      if (firstPlanet) {
+        selectPlanet(firstPlanet);
+      }
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.mode === mode) {
+          btn.classList.add('active');
+        }
+      });
+
+      const missionPanel = document.getElementById('mission-panel');
+      const terraformControls = document.querySelector('.terraform-controls');
+      
+      if (mode === 'mission') {
+        missionPanel.classList.add('active');
+        terraformControls.style.display = 'none';
+        startMission();
+      } else if (mode === 'terraform') {
+        missionPanel.classList.add('active');
+        terraformControls.style.display = 'flex';
+        startTerraform();
+      } else {
+        missionPanel.classList.remove('active');
+      }
+    }
+
+    function updatePlanetButtons() {
+      const planetButtons = document.getElementById('planet-buttons');
+      planetButtons.innerHTML = '';
+      
+      Object.entries(celestialBodies).forEach(([key, body]) => {
+        if (key !== 'sun' && key !== 'star') {
+          const btn = document.createElement('button');
+          btn.className = 'planet-btn';
+          btn.dataset.planet = key;
+          btn.textContent = body.name;
+          btn.addEventListener('click', function() {
+            selectPlanet(key);
+          });
+          planetButtons.appendChild(btn);
+        }
+      });
+    }
+
     function selectPlanet(planetKey) {
       selectedPlanet = planetKey;
       const body = celestialBodies[planetKey];
+      
+      if (!body) return;
       
       document.querySelectorAll('.planet-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -572,6 +916,111 @@
       document.getElementById('planet-period').textContent = body.period;
       document.getElementById('planet-temp').textContent = body.temp;
       document.getElementById('planet-description').textContent = body.description;
+
+      if (currentMode === 'mission') {
+        updateMissionForPlanet(body);
+      }
+    }
+
+    function startMission() {
+      missionProgress = 0;
+      const progressBar = document.querySelector('.mission-progress-bar');
+      progressBar.style.width = '0%';
+      
+      document.querySelector('.mission-title').textContent = 'Misja: Eksploracja Kosmosu';
+      document.getElementById('mission-content').innerHTML = 
+        '<p>Wybierz planetę do zbadania i kliknij na nią, aby rozpocząć misję!</p>';
+    }
+
+    function updateMissionForPlanet(body) {
+      const missions = {
+        mars: {
+          title: 'Misja: Eksploracja Marsa',
+          objective: 'Zbadaj powierzchnię Marsa i znajdź ślady wody',
+          content: 'Analizujesz próbki gruntu... Znaleziono ślady minerałów hydratowanych!'
+        },
+        kepler442b: {
+          title: 'Misja: Badanie Superziemi',
+          objective: 'Oceń potencjał zamieszkiwalny planety Kepler-442b',
+          content: 'Skanowanie atmosfery... Wykryto możliwość terraformacji!'
+        },
+        proximab: {
+          title: 'Misja: Pierwsza Kolonia',
+          objective: 'Przygotuj Proxima b do pierwszej kolonii międzygwiezdnej',
+          content: 'Badanie stabilności orbity... Planeta nadaje się do kolonizacji!'
+        }
+      };
+
+      const mission = missions[selectedPlanet] || {
+        title: 'Misja: Eksploracja',
+        objective: 'Zbadaj wybraną planetę',
+        content: 'Rozpoczynasz badanie tej fascynującej planety...'
+      };
+
+      document.querySelector('.mission-title').textContent = mission.title;
+      document.querySelector('.mission-objective strong').nextSibling.textContent = ' ' + mission.objective;
+      document.getElementById('mission-content').innerHTML = `<p>${mission.content}</p>`;
+
+      // Symuluj postęp misji
+      missionProgress = Math.min(missionProgress + 25, 100);
+      document.querySelector('.mission-progress-bar').style.width = missionProgress + '%';
+    }
+
+    function startTerraform() {
+      terraformStage = 0;
+      document.querySelector('.mission-title').textContent = 'Symulacja Terraformacji';
+      document.querySelector('.mission-objective strong').nextSibling.textContent = ' Przekształć planetę w nadającą się do zamieszkania';
+      document.getElementById('mission-content').innerHTML = 
+        '<p>Wybierz planetę i użyj narzędzi terraformacji, aby uczynić ją nadającą się do życia!</p>';
+    }
+
+    function performTerraform(action) {
+      const body = celestialBodies[selectedPlanet];
+      if (!body || !body.terraformable) {
+        document.getElementById('mission-content').innerHTML = 
+          '<p style="color: #ff6b6b;">Ta planeta nie nadaje się do terraformacji!</p>';
+        return;
+      }
+
+      terraformStage++;
+      
+      const actions = {
+        atmosphere: () => {
+          body.atmosphere = true;
+          return 'Dodano atmosferę! Planeta może teraz zatrzymywać ciepło.';
+        },
+        water: () => {
+          body.water = true;
+          return 'Wprowadzono wodę! Podstawa dla życia została stworzona.';
+        },
+        vegetation: () => {
+          if (body.atmosphere && body.water) {
+            body.life = true;
+            return 'Zasadzono roślinność! Planeta produkuje teraz tlen.';
+          }
+          return 'Potrzebujesz najpierw atmosfery i wody!';
+        },
+        temperature: () => {
+          const temp = parseInt(body.temp);
+          body.temp = Math.max(-50, temp + 30) + '°C';
+          return `Podgrzano planetę! Nowa temperatura: ${body.temp}`;
+        }
+      };
+
+      const result = actions[action]();
+      document.getElementById('mission-content').innerHTML = `<p style="color: #4caf50;">${result}</p>`;
+      
+      // Aktualizuj informacje o planecie
+      selectPlanet(selectedPlanet);
+      
+      // Aktualizuj postęp
+      const progress = Math.min(terraformStage * 25, 100);
+      document.querySelector('.mission-progress-bar').style.width = progress + '%';
+      
+      if (progress === 100) {
+        document.getElementById('mission-content').innerHTML += 
+          '<p style="color: #ffc107; font-weight: bold;">Gratulacje! Terraformacja zakończona sukcesem!</p>';
+      }
     }
 
     async function onConfigChange(config) {
@@ -704,14 +1153,17 @@
         mapToEditPanelValues: (config) => new Map([
           ["game_title", config.game_title || defaultConfig.game_title],
           ["welcome_message", config.welcome_message || defaultConfig.welcome_message],
-          ["earth_description", config.earth_description || defaultConfig.earth_description],
-          ["moon_description", config.moon_description || defaultConfig.moon_description],
-          ["mars_description", config.mars_description || defaultConfig.mars_description]
+          ["education_mode_title", config.education_mode_title || defaultConfig.education_mode_title],
+          ["mission_mode_title", config.mission_mode_title || defaultConfig.mission_mode_title],
+          ["terraform_mode_title", config.terraform_mode_title || defaultConfig.terraform_mode_title]
         ])
       });
     }
 
+    // Inicjalizacja
+    updatePlanetButtons();
+    selectPlanet('earth');
     render();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'996b8051b1918851',t:'MTc2MTgzMzQ4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'996bae0d8103c137',t:'MTc2MTgzNTM1My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
