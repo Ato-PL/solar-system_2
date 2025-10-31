@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Eksplorator Galaktyki 3D</title>
   <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    /* --- podstawowy layout --- */
     body {
       box-sizing: border-box;
       margin: 0;
@@ -16,687 +18,343 @@
       color: #ffffff;
       height: 100%;
     }
+    html { height: 100%; }
+    #game-container { width: 100%; height: 100%; position: relative; background: radial-gradient(ellipse at center, #0b0c14 0%, #000000 100%); }
 
-    html {
-      height: 100%;
+    canvas#canvas-3d { width:100%; height:100%; display:block; cursor: grab; }
+    canvas#canvas-3d:active { cursor: grabbing; }
+
+    /* overlay UI */
+    #ui-overlay { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+
+    /* header/info/controls (zostały) */
+    #header { padding: 20px; background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 100%); pointer-events:auto; }
+    #title { font-size: 28px; font-weight:bold; margin: 0 0 8px 0; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+    #subtitle { font-size: 14px; opacity:0.9; margin:0; }
+
+    /* info panel */
+    #info-panel{ position:absolute; bottom:20px; left:20px; background: rgba(0,0,0,0.85); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); max-width:340px; pointer-events:auto; backdrop-filter: blur(8px); }
+    #planet-name{ font-size:24px; font-weight:bold; color:#4fc3f7; margin:0 0 12px 0;}
+    .info-row{ display:flex; justify-content:space-between; margin:8px 0; font-size:14px; }
+    .info-label{ opacity:0.8 }
+    .info-value{ font-weight:bold }
+
+    /* buttons panel */
+    #planet-buttons{ position:absolute; bottom:20px; right:20px; display:flex; gap:10px; pointer-events:auto; }
+    .planet-btn{ padding:12px 20px; background: rgba(79,195,247,0.2); border:2px solid #4fc3f7; border-radius:8px; color:#fff; font-weight:bold; cursor:pointer; }
+    .planet-btn.active{ background:#4fc3f7; color:#000; }
+
+    /* orbit toggle */
+    #orbit-toggle{ position:absolute; top:120px; right:20px; padding:10px 16px; background: rgba(156,39,176,0.2); border:2px solid #9c27b0; border-radius:8px; color:#fff; cursor:pointer; pointer-events:auto; }
+
+    /* stars container (DOM) */
+    .stars { position:absolute; width:100%; height:100%; overflow:hidden; pointer-events:none; top:0; left:0; }
+    .star { position:absolute; background:white; border-radius:50%; opacity:0.9; filter: blur(0.3px); transform: translateZ(0); }
+
+    /* landing screen */
+    #landing {
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:auto;
+      background: linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.35));
+      z-index: 30;
     }
-
-    #game-container {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      background: radial-gradient(ellipse at center, #1a1a2e 0%, #000000 100%);
+    #landing .center {
+      text-align:center; transform-origin:center center;
     }
-
-    #canvas-3d {
-      width: 100%;
-      height: 100%;
-      display: block;
-      cursor: grab;
+    #landing-title {
+      font-family: 'Orbitron', sans-serif;
+      font-weight:700;
+      color: #7fe7ff;
+      letter-spacing: 2px;
+      text-shadow: 0 6px 30px rgba(127,231,255,0.12), 0 2px 8px rgba(0,0,0,0.8);
+      transform: scale(0.3);
+      opacity: 0;
+      will-change: transform, opacity;
     }
-
-    #canvas-3d:active {
-      cursor: grabbing;
-    }
-
-    #ui-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-
-    #header {
-      padding: 20px;
-      background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
-      pointer-events: auto;
-    }
-
-    #title {
-      font-size: 28px;
-      font-weight: bold;
-      margin: 0 0 8px 0;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
-    }
-
-    #subtitle {
-      font-size: 14px;
-      opacity: 0.9;
-      margin: 0;
-    }
-
-    #info-panel {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      background: rgba(0, 0, 0, 0.85);
-      padding: 20px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      max-width: 320px;
-      pointer-events: auto;
-      backdrop-filter: blur(10px);
-    }
-
-    #planet-name {
-      font-size: 24px;
-      font-weight: bold;
-      margin: 0 0 12px 0;
-      color: #4fc3f7;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      margin: 8px 0;
-      font-size: 14px;
-    }
-
-    .info-label {
-      opacity: 0.8;
-    }
-
-    .info-value {
-      font-weight: bold;
-    }
-
-    #planet-description {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.2);
-      font-size: 13px;
-      line-height: 1.5;
-      opacity: 0.9;
-    }
-
-    #controls-panel {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: rgba(0, 0, 0, 0.85);
-      padding: 16px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      pointer-events: auto;
-      backdrop-filter: blur(10px);
-    }
-
-    #system-selector {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 10px;
-      pointer-events: auto;
-    }
-
-    .system-btn {
-      padding: 12px 20px;
-      background: rgba(255, 193, 7, 0.2);
-      border: 2px solid #ffc107;
-      border-radius: 8px;
-      color: #ffffff;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .system-btn:hover {
-      background: rgba(255, 193, 7, 0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
-    }
-
-    .system-btn.active {
-      background: #ffc107;
-      color: #000000;
-      box-shadow: 0 4px 12px rgba(255, 193, 7, 0.6);
-    }
-
-    #mode-selector {
-      position: absolute;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 10px;
-      pointer-events: auto;
-    }
-
-    .mode-btn {
-      padding: 10px 16px;
-      background: rgba(76, 175, 80, 0.2);
-      border: 2px solid #4caf50;
-      border-radius: 8px;
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .mode-btn:hover {
-      background: rgba(76, 175, 80, 0.4);
-      transform: translateY(-2px);
-    }
-
-    .mode-btn.active {
-      background: #4caf50;
-      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.6);
-    }
-
-    .control-title {
-      font-size: 16px;
-      font-weight: bold;
-      margin: 0 0 12px 0;
-    }
-
-    .control-item {
-      display: flex;
-      align-items: center;
-      margin: 8px 0;
-      font-size: 13px;
-    }
-
-    .control-key {
-      background: rgba(255, 255, 255, 0.15);
-      padding: 4px 8px;
-      border-radius: 4px;
-      margin-right: 10px;
-      font-family: monospace;
-      min-width: 60px;
-      text-align: center;
-    }
-
-    #planet-buttons {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      display: flex;
-      gap: 10px;
-      pointer-events: auto;
-    }
-
-    .planet-btn {
-      padding: 12px 20px;
-      background: rgba(79, 195, 247, 0.2);
-      border: 2px solid #4fc3f7;
-      border-radius: 8px;
-      color: #ffffff;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .planet-btn:hover {
-      background: rgba(79, 195, 247, 0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(79, 195, 247, 0.4);
-    }
-
-    .planet-btn.active {
-      background: #4fc3f7;
-      box-shadow: 0 4px 12px rgba(79, 195, 247, 0.6);
-    }
-
-    #orbit-toggle {
-      position: absolute;
-      top: 120px;
-      right: 20px;
-      padding: 10px 16px;
-      background: rgba(156, 39, 176, 0.2);
-      border: 2px solid #9c27b0;
-      border-radius: 8px;
-      color: #ffffff;
-      font-size: 13px;
-      cursor: pointer;
-      pointer-events: auto;
-      transition: all 0.3s ease;
-    }
-
-    #orbit-toggle:hover {
-      background: rgba(156, 39, 176, 0.4);
-    }
-
-    #orbit-toggle.active {
-      background: #9c27b0;
-    }
-
-    .stars {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-    }
-
-    .star {
-      position: absolute;
-      background: white;
-      border-radius: 50%;
-      animation: twinkle 3s infinite;
-    }
-
-    @keyframes twinkle {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
-    }
-
-    @keyframes planetRotation {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    @keyframes atmosphereShimmer {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 0.7; }
-    }
-
-    #mission-panel {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.9);
-      padding: 30px;
-      border-radius: 15px;
-      border: 2px solid #4caf50;
-      max-width: 500px;
-      pointer-events: auto;
-      backdrop-filter: blur(15px);
-      display: none;
-    }
-
-    #mission-panel.active {
-      display: block;
-    }
-
-    .mission-title {
-      font-size: 24px;
-      font-weight: bold;
-      margin: 0 0 20px 0;
-      color: #4caf50;
-      text-align: center;
-    }
-
-    .mission-objective {
-      background: rgba(76, 175, 80, 0.1);
-      padding: 15px;
-      border-radius: 8px;
-      margin: 15px 0;
-      border-left: 4px solid #4caf50;
-    }
-
-    .mission-progress {
-      background: rgba(255, 255, 255, 0.1);
-      height: 8px;
-      border-radius: 4px;
-      margin: 10px 0;
-      overflow: hidden;
-    }
-
-    .mission-progress-bar {
-      background: #4caf50;
-      height: 100%;
-      border-radius: 4px;
-      transition: width 0.5s ease;
-    }
-
-    .terraform-controls {
-      display: flex;
-      gap: 10px;
-      margin: 15px 0;
-      flex-wrap: wrap;
-    }
-
-    .terraform-btn {
-      padding: 8px 16px;
-      background: rgba(33, 150, 243, 0.2);
-      border: 1px solid #2196f3;
-      border-radius: 6px;
-      color: #ffffff;
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .terraform-btn:hover {
-      background: rgba(33, 150, 243, 0.4);
-    }
-
-    .terraform-btn.active {
-      background: #2196f3;
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      background: none;
+    #start-btn {
+      margin-top: 24px;
+      padding: 12px 28px;
+      border-radius: 999px;
+      background: linear-gradient(90deg,#00d4ff,#6a00ff);
       border: none;
-      color: #ffffff;
-      font-size: 24px;
-      cursor: pointer;
-      opacity: 0.7;
+      color: #000;
+      font-weight:700;
+      cursor:pointer;
+      display:none;
+      box-shadow: 0 8px 30px rgba(106,0,255,0.25);
     }
 
-    .close-btn:hover {
-      opacity: 1;
+    /* menu overlay */
+    #menu-overlay {
+      position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:auto; z-index:40;
+      background: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.6));
     }
+    .menu-card {
+      width: 720px;
+      max-width: 92%;
+      background: rgba(6,6,10,0.9);
+      border-radius:14px;
+      padding:20px;
+      border:1px solid rgba(255,255,255,0.08);
+      color:#fff;
+      display:flex;
+      gap:20px;
+      align-items:flex-start;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    }
+    .menu-section { flex:1; }
+    .menu-title { font-family: 'Orbitron', sans-serif; margin:0 0 10px 0; color:#7fe7ff; font-size:18px; }
+    .menu-grid { display:flex; gap:10px; flex-wrap:wrap; }
+    .select-tile{ padding:12px 16px; border-radius:10px; background: rgba(255,255,255,0.04); cursor:pointer; border:1px solid rgba(255,255,255,0.03); user-select:none; }
+    .select-tile.active { background: linear-gradient(90deg,#4fc3f7,#9c27b0); color:#000; font-weight:700; border-color: rgba(255,255,255,0.12); }
+    #proceed-btn { margin-top:14px; padding:10px 16px; border-radius:10px; background:#4caf50; border:none; color:#000; font-weight:700; cursor:pointer; }
+
+    /* mission UI */
+    #mission-ui { position:absolute; top:14px; right:14px; background: rgba(0,0,0,0.6); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); pointer-events:auto; z-index:50; display:none; }
+    #mission-ui .row { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+
+    /* terraform UI small tweaks */
+    .terraform-controls { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+    .terraform-btn { padding:8px 12px; border-radius:8px; background: rgba(33,150,243,0.12); border:1px solid rgba(33,150,243,0.2); cursor:pointer; }
+
   </style>
-  <style>@view-transition { navigation: auto; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
-  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
  </head>
  <body>
   <div id="game-container">
    <div class="stars" id="stars"></div>
    <canvas id="canvas-3d"></canvas>
+
    <div id="ui-overlay">
-    <div id="header">
-     <h1 id="title">Eksplorator Galaktyki 3D</h1>
-     <p id="subtitle">Odkryj tajemnice trzech układów planetarnych!</p>
-    </div>
-    <div id="system-selector"><button class="system-btn active" data-system="solar">Układ Słoneczny</button> <button class="system-btn" data-system="kepler">Kepler-442</button> <button class="system-btn" data-system="proxima">Proxima Centauri</button>
-    </div>
-    <div id="mode-selector"><button class="mode-btn active" data-mode="education">Tryb Edukacyjny</button> <button class="mode-btn" data-mode="mission">Tryb Misji</button> <button class="mode-btn" data-mode="terraform">Terraformacja</button>
-    </div>
-    <div id="controls-panel">
-     <div class="control-title">
-      Sterowanie
+     <div id="header">
+       <h1 id="title">Eksplorator Galaktyki 3D</h1>
+       <p id="subtitle">Odkryj tajemnice trzech układów planetarnych!</p>
      </div>
-     <div class="control-item"><span class="control-key">Mysz</span> <span>Obracaj widok</span>
+
+     <!-- INFO PANEL (jak wcześniej) -->
+     <div id="info-panel" style="pointer-events:auto;">
+       <h2 id="planet-name">Ziemia</h2>
+       <div class="info-row"><span class="info-label">Średnica:</span> <span class="info-value" id="planet-diameter">12,742 km</span></div>
+       <div class="info-row"><span class="info-label">Odległość od Słońca:</span> <span class="info-value" id="planet-distance">149.6 mln km</span></div>
+       <div class="info-row"><span class="info-label">Okres orbitalny:</span> <span class="info-value" id="planet-period">365.25 dni</span></div>
+       <div class="info-row"><span class="info-label">Temperatura:</span> <span class="info-value" id="planet-temp">15°C</span></div>
+       <div id="planet-description" style="margin-top:12px; font-size:13px; opacity:0.9;">Nasza niebieska planeta, jedyne znane miejsce we wszechświecie zamieszkane przez życie. Pokryta oceanami i atmosferą bogatą w tlen.</div>
      </div>
-     <div class="control-item"><span class="control-key">Scroll</span> <span>Przybliż/Oddal</span>
+
+     <div id="planet-buttons" style="pointer-events:auto;"></div>
+     <button id="orbit-toggle">Pokaż Orbity</button>
+
+     <!-- Landing -->
+     <div id="landing">
+       <div class="center">
+         <div id="landing-title" style="font-size:48px;">ODKRYJ GALAKTYKĘ</div>
+         <button id="start-btn">START</button>
+         <div style="margin-top:10px; font-size:12px; color:rgba(255,255,255,0.6);">Przeciągnij myszką, aby obracać kamerę</div>
+       </div>
      </div>
-     <div class="control-item"><span class="control-key">Kliknij</span> <span>Wybierz planetę</span>
+
+     <!-- Menu overlay (wybor układu i trybu) -->
+     <div id="menu-overlay">
+       <div class="menu-card" role="dialog" aria-modal="true">
+         <div class="menu-section">
+           <h3 class="menu-title">Wybierz Układ</h3>
+           <div class="menu-grid" id="menu-systems">
+             <!-- systemy będą generowane -->
+           </div>
+         </div>
+         <div class="menu-section">
+           <h3 class="menu-title">Wybierz Tryb</h3>
+           <div class="menu-grid" id="menu-modes">
+             <!-- tryby będą generowane -->
+           </div>
+           <div style="margin-top:12px;">
+             <button id="proceed-btn">Dalej</button>
+           </div>
+         </div>
+       </div>
      </div>
-    </div><button id="orbit-toggle">Pokaż Orbity</button>
-    <div id="info-panel">
-     <h2 id="planet-name">Ziemia</h2>
-     <div class="info-row"><span class="info-label">Średnica:</span> <span class="info-value" id="planet-diameter">12,742 km</span>
+
+     <!-- Mission UI (score, lives, zasoby) -->
+     <div id="mission-ui">
+       <div class="row"><strong>Fala:</strong> <span id="wave-count">0</span></div>
+       <div class="row"><strong>Wynik:</strong> <span id="score-count">0</span></div>
+       <div class="row"><strong>Zasoby:</strong> <span id="resource-count">0</span></div>
      </div>
-     <div class="info-row"><span class="info-label">Odległość od Słońca:</span> <span class="info-value" id="planet-distance">149.6 mln km</span>
-     </div>
-     <div class="info-row"><span class="info-label">Okres orbitalny:</span> <span class="info-value" id="planet-period">365.25 dni</span>
-     </div>
-     <div class="info-row"><span class="info-label">Temperatura:</span> <span class="info-value" id="planet-temp">15°C</span>
-     </div>
-     <div id="planet-description">
-      Nasza niebieska planeta, jedyne znane miejsce we wszechświecie zamieszkane przez życie. Pokryta oceanami i atmosferą bogatą w tlen.
-     </div>
-    </div>
-    <div id="planet-buttons"><button class="planet-btn active" data-planet="earth">Ziemia</button> <button class="planet-btn" data-planet="moon">Księżyc</button> <button class="planet-btn" data-planet="mars">Mars</button>
-    </div>
-    <div id="mission-panel"><button class="close-btn">×</button>
-     <h2 class="mission-title">Misja: Eksploracja Marsa</h2>
-     <div class="mission-objective"><strong>Cel:</strong> Zbadaj powierzchnię Marsa i znajdź ślady wody
-     </div>
-     <div class="mission-progress">
-      <div class="mission-progress-bar" style="width: 0%"></div>
-     </div>
-     <div id="mission-content">
-      <p>Kliknij na Mars, aby rozpocząć misję!</p>
-     </div>
-     <div class="terraform-controls" style="display: none;"><button class="terraform-btn" data-action="atmosphere">Dodaj Atmosferę</button> <button class="terraform-btn" data-action="water">Dodaj Wodę</button> <button class="terraform-btn" data-action="vegetation">Dodaj Roślinność</button> <button class="terraform-btn" data-action="temperature">Podgrzej Planetę</button>
-     </div>
-    </div>
+
    </div>
   </div>
-  <script>
-    const defaultConfig = {
-      game_title: "Eksplorator Galaktyki 3D",
-      welcome_message: "Odkryj tajemnice trzech układów planetarnych!",
-      education_mode_title: "Tryb Edukacyjny",
-      mission_mode_title: "Tryb Misji", 
-      terraform_mode_title: "Symulacja Terraformacji",
-      background_color: "#000000",
-      primary_color: "#4fc3f7",
-      text_color: "#ffffff",
-      panel_color: "rgba(0, 0, 0, 0.85)",
-      accent_color: "#9c27b0",
-      font_family: "Segoe UI",
-      font_size: 16
-    };
 
+  <script>
+    // --- podstawowe ustawienia i canvas ---
     const canvas = document.getElementById('canvas-3d');
     const ctx = canvas.getContext('2d');
     let width, height;
-
-    function resizeCanvas() {
-      width = canvas.width = canvas.offsetWidth;
-      height = canvas.height = canvas.offsetHeight;
-    }
+    function resizeCanvas(){ width = canvas.width = canvas.offsetWidth; height = canvas.height = canvas.offsetHeight; }
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // Generate stars
+    // Stworzenie gwiazd - warstwa DOM dla ładnego efektu
     const starsContainer = document.getElementById('stars');
-    for (let i = 0; i < 200; i++) {
-      const star = document.createElement('div');
-      star.className = 'star';
-      const size = Math.random() * 2 + 1;
-      star.style.width = size + 'px';
-      star.style.height = size + 'px';
-      star.style.left = Math.random() * 100 + '%';
-      star.style.top = Math.random() * 100 + '%';
-      star.style.animationDelay = Math.random() * 3 + 's';
-      starsContainer.appendChild(star);
+    const starCount = 300;
+    for (let i=0;i<starCount;i++){
+      const s = document.createElement('div');
+      s.className = 'star';
+      const size = Math.random()*2 + 0.5;
+      s.style.width = size + 'px';
+      s.style.height = size + 'px';
+      s.style.left = (Math.random()*100) + '%';
+      s.style.top = (Math.random()*100) + '%';
+      s.style.opacity = (Math.random()*0.8 + 0.2);
+      s.style.animation = `twinkle ${2+Math.random()*3}s ${Math.random()*3}s infinite`;
+      starsContainer.appendChild(s);
     }
 
-    // 3D Engine
-    let camera = {
-      x: 0,
-      y: 0,
-      z: -400,
-      rotX: 0,
-      rotY: 0
-    };
+    // prosty keyframes twinkle (dynamic assignment)
+    (function addTwinkleKeyframes(){
+      const style = document.createElement('style');
+      style.innerHTML = `
+        @keyframes twinkle {
+          0%,100% { opacity: 0.2; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.6); }
+        }
+      `;
+      document.head.appendChild(style);
+    })();
 
-    let isDragging = false;
-    let lastMouseX = 0;
-    let lastMouseY = 0;
-    let showOrbits = false;
-    let selectedPlanet = 'earth';
-    let currentSystem = 'solar';
-    let currentMode = 'education';
-    let missionProgress = 0;
-    let terraformStage = 0;
+    // Kamerka i model 3D (upraszczamy Twoją logikę, zachowując większość funkcji)
+    let camera = { x:0, y:0, z:-400, rotX:0.2, rotY:0 };
+    let isDragging=false, lastMouseX=0, lastMouseY=0, showOrbits=false;
+    let selectedPlanet='earth', currentSystem='solar', currentMode='education';
     let animationTime = 0;
 
-    const planetarySystems = {
+    // Twoje systemy, niemal identyczne z oryginałem
+    const planetarySystems = { /* skopiowane i lekko poprawione obiekty */ 
       solar: {
         name: 'Układ Słoneczny',
-        star: { name: 'Słońce', color: '#FDB813', radius: 30 },
+        star:{ name:'Słońce', color:'#FDB813', radius:30 },
         bodies: {
-          sun: { x: 0, y: 0, z: 0, radius: 30, color: '#FDB813', name: 'Słońce' },
-          earth: {
-            x: 150, y: 0, z: 0, radius: 15, color: '#4169E1', orbitRadius: 150, orbitSpeed: 0.001, angle: 0,
-            name: 'Ziemia', diameter: '12,742 km', distance: '149.6 mln km', period: '365.25 dni', temp: '15°C',
-            description: 'Nasza niebieska planeta, jedyne znane miejsce we wszechświecie zamieszkane przez życie.',
-            atmosphere: true, water: true, life: true
-          },
-          moon: {
-            x: 180, y: 0, z: 0, radius: 5, color: '#C0C0C0', orbitRadius: 30, orbitSpeed: 0.004, angle: 0, parent: 'earth',
-            name: 'Księżyc', diameter: '3,474 km', distance: '384,400 km od Ziemi', period: '27.3 dni', temp: '-53°C',
-            description: 'Naturalny satelita Ziemi, oddalony o 384,400 km. Jego grawitacja wpływa na pływy oceanów.'
-          },
-          mars: {
-            x: 250, y: 0, z: 0, radius: 12, color: '#CD5C5C', orbitRadius: 250, orbitSpeed: 0.0005, angle: Math.PI,
-            name: 'Mars', diameter: '6,779 km', distance: '227.9 mln km', period: '687 dni', temp: '-63°C',
-            description: 'Czerwona planeta, czwarta od Słońca. Cel przyszłych misji terraformacyjnych.',
-            atmosphere: false, water: false, life: false, terraformable: true
-          }
+          sun: { x:0,y:0,z:0, radius:30, color:'#FDB813', name:'Słońce' },
+          earth: { x:150,y:0,z:0, radius:15, color:'#4169E1', orbitRadius:150, orbitSpeed:0.001, angle:0, name:'Ziemia', diameter:'12,742 km', distance:'149.6 mln km', period:'365.25 dni', temp:'15°C', description:'Nasza niebieska planeta, jedyne znane miejsce z życiem.', atmosphere:true, water:true, life:true, terraformable:false, health:100 },
+          moon: { x:180,y:0,z:0, radius:5, color:'#C0C0C0', orbitRadius:30, orbitSpeed:0.004, angle:0, parent:'earth', name:'Księżyc', diameter:'3,474 km', distance:'384,400 km od Ziemi', period:'27.3 dni', temp:'-53°C', description:'Naturalny satelita.' },
+          mars: { x:250,y:0,z:0, radius:12, color:'#CD5C5C', orbitRadius:250, orbitSpeed:0.0005, angle:Math.PI, name:'Mars', diameter:'6,779 km', distance:'227.9 mln km', period:'687 dni', temp:'-63°C', description:'Czerwona planeta', atmosphere:false, water:false, life:false, terraformable:true, health:100 }
         }
       },
       kepler: {
         name: 'Kepler-442',
-        star: { name: 'Kepler-442', color: '#FF6B35', radius: 25 },
+        star:{ name:'Kepler-442', color:'#FF6B35', radius:25 },
         bodies: {
-          star: { x: 0, y: 0, z: 0, radius: 25, color: '#FF6B35', name: 'Kepler-442' },
-          kepler442b: {
-            x: 120, y: 0, z: 0, radius: 18, color: '#8B4513', orbitRadius: 120, orbitSpeed: 0.0015, angle: 0,
-            name: 'Kepler-442b', diameter: '15,318 km', distance: '112.3 mln km', period: '112.3 dni', temp: '233°C',
-            description: 'Superziemia w strefie zamieszkiwalnej. Potencjalnie nadaje się do terraformacji.',
-            atmosphere: false, water: false, life: false, terraformable: true
-          },
-          kepler442c: {
-            x: 200, y: 0, z: 0, radius: 14, color: '#4682B4', orbitRadius: 200, orbitSpeed: 0.0008, angle: Math.PI/2,
-            name: 'Kepler-442c', diameter: '11,200 km', distance: '187.5 mln km', period: '305 dni', temp: '-12°C',
-            description: 'Lodowa planeta z gęstą atmosferą. Może zawierać podziemne oceany.',
-            atmosphere: true, water: true, life: false
-          },
-          asteroid: {
-            x: 280, y: 0, z: 0, radius: 3, color: '#696969', orbitRadius: 280, orbitSpeed: 0.0003, angle: Math.PI,
-            name: 'Pas Asteroid', diameter: '2-50 km', distance: '280 mln km', period: '1,200 dni', temp: '-180°C',
-            description: 'Pas asteroid bogatych w minerały. Źródło surowców do terraformacji.'
-          }
+          star: { x:0,y:0,z:0, radius:25, color:'#FF6B35', name:'Kepler-442' },
+          kepler442b: { x:120,y:0,z:0, radius:18, color:'#8B4513', orbitRadius:120, orbitSpeed:0.0015, angle:0, name:'Kepler-442b', diameter:'15,318 km', distance:'112.3 mln km', period:'112.3 dni', temp:'233°C', description:'Superziemia', atmosphere:false, water:false, life:false, terraformable:true, health:120 },
+          kepler442c: { x:200,y:0,z:0, radius:14, color:'#4682B4', orbitRadius:200, orbitSpeed:0.0008, angle:Math.PI/2, name:'Kepler-442c', diameter:'11,200 km', distance:'187.5 mln km', period:'305 dni', temp:'-12°C', description:'Lodowa planeta', atmosphere:true, water:true, life:false, health:80 },
+          asteroid: { x:280,y:0,z:0, radius:3, color:'#696969', orbitRadius:280, orbitSpeed:0.0003, angle:Math.PI, name:'Pas Asteroid', diameter:'2-50 km', distance:'280 mln km', period:'1,200 dni', temp:'-180°C', description:'Pas asteroid bogatych w minerały.' }
         }
       },
       proxima: {
         name: 'Proxima Centauri',
-        star: { name: 'Proxima Centauri', color: '#DC143C', radius: 20 },
+        star:{ name:'Proxima Centauri', color:'#DC143C', radius:20 },
         bodies: {
-          star: { x: 0, y: 0, z: 0, radius: 20, color: '#DC143C', name: 'Proxima Centauri' },
-          proximab: {
-            x: 80, y: 0, z: 0, radius: 16, color: '#8FBC8F', orbitRadius: 80, orbitSpeed: 0.002, angle: 0,
-            name: 'Proxima b', diameter: '14,100 km', distance: '7.5 mln km', period: '11.2 dni', temp: '-39°C',
-            description: 'Planeta w strefie zamieszkiwalnej czerwonego karła. Może mieć atmosferę.',
-            atmosphere: true, water: false, life: false, terraformable: true
-          },
-          proximac: {
-            x: 140, y: 0, z: 0, radius: 8, color: '#DDA0DD', orbitRadius: 140, orbitSpeed: 0.0006, angle: Math.PI/3,
-            name: 'Proxima c', diameter: '7,800 km', distance: '13.8 mln km', period: '1,928 dni', temp: '-234°C',
-            description: 'Zimna superziemia. Potencjalnie bogata w lód wodny.',
-            atmosphere: false, water: true, life: false
-          },
-          moon1: {
-            x: 100, y: 0, z: 0, radius: 4, color: '#F5DEB3', orbitRadius: 20, orbitSpeed: 0.008, angle: 0, parent: 'proximab',
-            name: 'Proxima b-I', diameter: '2,100 km', distance: '20,000 km od Proxima b', period: '5 dni', temp: '-45°C',
-            description: 'Księżyc Proxima b. Może stabilizować klimat planety macierzystej.'
-          }
+          star:{ x:0,y:0,z:0, radius:20, color:'#DC143C', name:'Proxima Centauri' },
+          proximab:{ x:80,y:0,z:0, radius:16, color:'#8FBC8F', orbitRadius:80, orbitSpeed:0.002, angle:0, name:'Proxima b', diameter:'14,100 km', distance:'7.5 mln km', period:'11.2 dni', temp:'-39°C', description:'Planeta w strefie zamieszkiwalnej', atmosphere:true, water:false, life:false, terraformable:true, health:110 },
+          proximac:{ x:140,y:0,z:0, radius:8, color:'#DDA0DD', orbitRadius:140, orbitSpeed:0.0006, angle:Math.PI/3, name:'Proxima c', diameter:'7,800 km', distance:'13.8 mln km', period:'1,928 dni', temp:'-234°C', description:'Zimna superziemia', atmosphere:false, water:true, life:false, health:90 },
+          moon1: { x:100,y:0,z:0, radius:4, color:'#F5DEB3', orbitRadius:20, orbitSpeed:0.008, angle:0, parent:'proximab', name:'Proxima b-I', diameter:'2,100 km', distance:'20,000 km od Proxima b', period:'5 dni', temp:'-45°C', description:'' }
         }
       }
     };
 
+    // Aktualne ciało i lista ciał
     let celestialBodies = planetarySystems.solar.bodies;
 
-    function project3D(x, y, z) {
-      const cosX = Math.cos(camera.rotX);
-      const sinX = Math.sin(camera.rotX);
-      const cosY = Math.cos(camera.rotY);
-      const sinY = Math.sin(camera.rotY);
+    // Funkcja projekcji 3D -> 2D (twoja)
+    function project3D(x,y,z){
+      const cosX = Math.cos(camera.rotX), sinX = Math.sin(camera.rotX);
+      const cosY = Math.cos(camera.rotY), sinY = Math.sin(camera.rotY);
 
       let tempY = y * cosX - z * sinX;
       let tempZ = y * sinX + z * cosX;
-      y = tempY;
-      z = tempZ;
+      y = tempY; z = tempZ;
 
       let tempX = x * cosY - z * sinY;
       tempZ = x * sinY + z * cosY;
-      x = tempX;
-      z = tempZ;
+      x = tempX; z = tempZ;
 
       z = z - camera.z;
-      
       const scale = 300 / (300 + z);
-      const x2d = x * scale + width / 2;
-      const y2d = y * scale + height / 2;
-
+      const x2d = x * scale + width/2;
+      const y2d = y * scale + height/2;
       return { x: x2d, y: y2d, scale: scale, z: z };
     }
 
-    function drawOrbit(body) {
+    // Rysowanie orbity i sfery (jak wcześniej, z efektami)
+    function drawOrbit(body){
       if (!body.orbitRadius) return;
-      
       const points = [];
-      const segments = 100;
-      
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        let x = Math.cos(angle) * body.orbitRadius;
-        let z = Math.sin(angle) * body.orbitRadius;
-        
-        if (body.parent) {
+      const segments = 80;
+      for (let i=0;i<=segments;i++){
+        const angle = (i/segments) * Math.PI*2;
+        let x = Math.cos(angle)*body.orbitRadius;
+        let z = Math.sin(angle)*body.orbitRadius;
+        if (body.parent){
           const parent = celestialBodies[body.parent];
-          x += parent.x;
-          z += parent.z;
+          x += parent.x; z += parent.z;
         }
-        
-        const projected = project3D(x, 0, z);
-        points.push(projected);
+        points.push(project3D(x,0,z));
       }
-
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
-      }
+      for (let i=1;i<points.length;i++) ctx.lineTo(points[i].x, points[i].y);
       ctx.stroke();
     }
 
-    function drawSphere(x, y, radius, color, scale, body) {
-      // Podstawowa sfera
-      const gradient = ctx.createRadialGradient(
-        x - radius * 0.3, y - radius * 0.3, 0,
-        x, y, radius
-      );
+    function drawSphere(x,y,radius,color,scale,body){
+      const rad = radius * scale;
+      const gradient = ctx.createRadialGradient(x - rad*0.3, y - rad*0.3, 0, x, y, rad);
       gradient.addColorStop(0, color);
       gradient.addColorStop(1, '#000000');
-
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      ctx.arc(x, y, radius * scale, 0, Math.PI * 2);
+      ctx.arc(x,y,rad,0,Math.PI*2);
       ctx.fill();
 
-      // Animacje powierzchni
-      if (body && body.atmosphere) {
-        const atmosphereOpacity = 0.3 + 0.2 * Math.sin(animationTime * 0.002);
-        ctx.strokeStyle = `rgba(135, 206, 235, ${atmosphereOpacity})`;
+      if (body && body.atmosphere){
+        const atmosphereOpacity = 0.25 + 0.15 * Math.sin(animationTime * 0.002);
+        ctx.strokeStyle = `rgba(135,206,235,${atmosphereOpacity})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(x, y, (radius + 2) * scale, 0, Math.PI * 2);
+        ctx.arc(x,y,(radius+2)*scale,0,Math.PI*2);
         ctx.stroke();
       }
 
-      if (body && body.water && currentMode === 'terraform') {
-        const waterShimmer = 0.4 + 0.3 * Math.sin(animationTime * 0.003);
-        ctx.fillStyle = `rgba(0, 100, 200, ${waterShimmer})`;
+      if (body && body.water && currentMode==='terraform'){
+        const waterShimmer = 0.35 + 0.25 * Math.sin(animationTime * 0.003);
+        ctx.fillStyle = `rgba(0,100,200,${waterShimmer})`;
         ctx.beginPath();
-        ctx.arc(x - radius * 0.2, y + radius * 0.1, radius * 0.3 * scale, 0, Math.PI * 2);
+        ctx.arc(x - rad*0.18, y + rad*0.12, rad*0.26, 0, Math.PI*2);
         ctx.fill();
       }
 
-      if (body && body.life) {
-        const lifeGlow = 0.2 + 0.1 * Math.sin(animationTime * 0.001);
-        ctx.strokeStyle = `rgba(0, 255, 0, ${lifeGlow})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(x, y, radius * scale, 0, Math.PI * 2);
-        ctx.stroke();
+      // health overlay (mission)
+      if (body && body.health !== undefined && currentMode==='mission'){
+        const hp = Math.max(0, body.health);
+        const pct = hp / 120; // normalize for display
+        const barW = rad*1.8;
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(x - barW/2, y + rad + 6, barW, 6);
+        ctx.fillStyle = `rgba(${Math.floor((1-pct)*255)}, ${Math.floor(pct*200)}, 60, 0.9)`;
+        ctx.fillRect(x - barW/2, y + rad + 6, Math.max(0, barW * Math.min(1,pct)), 6);
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.strokeRect(x - barW/2, y + rad + 6, barW, 6);
       }
 
-      // Standardowa ramka
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(x, y, radius * scale, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2); ctx.stroke();
     }
 
-    function updatePositions() {
-      Object.keys(celestialBodies).forEach(key => {
+    function updatePositions(){
+      Object.keys(celestialBodies).forEach(key=>{
         const body = celestialBodies[key];
-        if (body.orbitSpeed) {
+        if (body.orbitSpeed){
           body.angle += body.orbitSpeed;
-          
-          if (body.parent) {
+          if (body.parent){
             const parent = celestialBodies[body.parent];
             body.x = parent.x + Math.cos(body.angle) * body.orbitRadius;
             body.z = parent.z + Math.sin(body.angle) * body.orbitRadius;
@@ -708,462 +366,443 @@
       });
     }
 
-    function render() {
-      ctx.clearRect(0, 0, width, height);
+    // --- Dodatkowe systemy gry (terraform i misja) ---
+    // zasoby, alieny, pociski
+    let resources = 0;
+    let aliens = [];
+    let projectiles = [];
+    let wave = 0;
+    let score = 0;
+    let missionActive = false;
+    let terraformStage = 0;
+
+    function spawnAsteroidResource(){
+      resources += 1;
+      updateMissionUI();
+    }
+
+    function spawnAlien(){
+      // wybierz cel: losowa planeta w systemie (nie gwiazda)
+      const planetKeys = Object.keys(celestialBodies).filter(k => !['sun','star','asteroid'].includes(k));
+      if (planetKeys.length===0) return;
+      const targetKey = planetKeys[Math.floor(Math.random()*planetKeys.length)];
+      const target = celestialBodies[targetKey];
+      // pozycja startowa na zewnątrz orbit
+      const spawnRadius = 420 + Math.random()*200;
+      const angle = Math.random() * Math.PI*2;
+      const x = Math.cos(angle) * spawnRadius;
+      const z = Math.sin(angle) * spawnRadius;
+      aliens.push({ x, y:0, z, angleToTarget:0, speed: 0.6 + Math.random()*0.6, target: targetKey, hp: 3 + Math.floor(Math.random()*3) });
+    }
+
+    function updateAliens(){
+      for (let i=aliens.length-1;i>=0;i--){
+        const a = aliens[i];
+        const t = celestialBodies[a.target];
+        // kierunek wektorowy w 3D (upraszczony, y=0)
+        const dx = (t.x - a.x);
+        const dz = (t.z - a.z);
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        if (dist < (t.radius + 6)){
+          // trafił w planetę
+          if (t.health !== undefined){
+            t.health -= 10; // obrażenia
+            if (t.health <= 0){
+              t.color = '#333'; // zniszczona
+            }
+          }
+          aliens.splice(i,1);
+          continue;
+        }
+        // normalizacja
+        a.x += (dx / dist) * a.speed;
+        a.z += (dz / dist) * a.speed;
+      }
+    }
+
+    function updateProjectiles(){
+      for (let i=projectiles.length-1;i>=0;i--){
+        const p = projectiles[i];
+        // poruszamy projektilem w kierunku (vx, vy) ustalonym przy creation
+        p.x += p.vx; p.z += p.vz;
+        // kolizja z alienem
+        for (let j=aliens.length-1;j>=0;j--){
+          const a = aliens[j];
+          const dx = a.x - p.x; const dz = a.z - p.z;
+          if (Math.sqrt(dx*dx + dz*dz) < 8){
+            a.hp -= 1;
+            if (a.hp <= 0){
+              aliens.splice(j,1);
+              score += 10;
+              // drop resources
+              resources += 1;
+            }
+            projectiles.splice(i,1);
+            break;
+          }
+        }
+        // usuwamy jeśli za daleko
+        if (p.x*p.x + p.z*p.z > 1000*1000) projectiles.splice(i,1);
+      }
+    }
+
+    function startWave(){
+      wave += 1;
+      document.getElementById('wave-count').textContent = wave;
+      const count = 3 + Math.floor(wave*0.7);
+      for (let i=0;i<count;i++){
+        setTimeout(spawnAlien, i*500 + Math.random()*600);
+      }
+    }
+
+    function updateMissionUI(){
+      document.getElementById('wave-count').textContent = wave;
+      document.getElementById('score-count').textContent = score;
+      document.getElementById('resource-count').textContent = resources;
+      document.getElementById('mission-ui').style.display = missionActive ? 'block' : 'none';
+    }
+
+    // --- Rendering loop ---
+    function render(){
+      ctx.clearRect(0,0,width,height);
       animationTime += 16;
 
       updatePositions();
-
-      if (showOrbits) {
-        Object.values(celestialBodies).forEach(body => {
-          drawOrbit(body);
-        });
+      if (currentMode === 'mission'){
+        updateAliens();
+        updateProjectiles();
       }
 
-      const sortedBodies = Object.entries(celestialBodies)
-        .map(([key, body]) => {
-          const projected = project3D(body.x, body.y, body.z);
-          return { key, body, projected };
-        })
-        .sort((a, b) => a.projected.z - b.projected.z);
+      if (showOrbits){
+        Object.values(celestialBodies).forEach(b => drawOrbit(b));
+      }
 
-      sortedBodies.forEach(({ body, projected }) => {
-        if (projected.z > -300) {
-          drawSphere(projected.x, projected.y, body.radius, body.color, projected.scale, body);
-        }
+      // sort by depth
+      const sortedBodies = Object.entries(celestialBodies).map(([key,body])=>{
+        const proj = project3D(body.x, body.y, body.z);
+        return { key, body, proj };
+      }).sort((a,b)=> a.proj.z - b.proj.z);
+
+      sortedBodies.forEach(({ body, proj })=>{
+        if (proj.z > -1000) drawSphere(proj.x, proj.y, body.radius, body.color || '#888', proj.scale, body);
       });
+
+      // rysuj alieny i pociski (2D overlay na canvas)
+      if (currentMode==='mission'){
+        aliens.forEach(a=>{
+          const p = project3D(a.x, 0, a.z);
+          if (p.z > -900){
+            const size = 6 * p.scale;
+            ctx.fillStyle = 'rgba(255,60,60,0.95)';
+            ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(2,size), 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.arc(p.x,p.y,Math.max(2,size)+4,0,Math.PI*2); ctx.stroke();
+          }
+        });
+        projectiles.forEach(pj=>{
+          const p = project3D(pj.x,0,pj.z);
+          if (p.z > -900){
+            ctx.fillStyle = 'rgba(180,255,100,0.95)';
+            ctx.beginPath(); ctx.arc(p.x,p.y, Math.max(1, 3*p.scale), 0, Math.PI*2); ctx.fill();
+          }
+        });
+      }
 
       requestAnimationFrame(render);
     }
 
-    canvas.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      lastMouseX = e.clientX;
-      lastMouseY = e.clientY;
+    // --- Input obsługa kamery i klików (dodatkowo strzelanie) ---
+    canvas.addEventListener('mousedown', (e)=>{
+      isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY;
     });
-
-    canvas.addEventListener('mousemove', (e) => {
-      if (isDragging) {
+    canvas.addEventListener('mousemove', (e)=>{
+      if (isDragging && !missionAimLock){
         const deltaX = e.clientX - lastMouseX;
         const deltaY = e.clientY - lastMouseY;
-        
         camera.rotY += deltaX * 0.005;
         camera.rotX += deltaY * 0.005;
-        
-        camera.rotX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotX));
-        
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
+        camera.rotX = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotX));
+        lastMouseX = e.clientX; lastMouseY = e.clientY;
       }
     });
+    canvas.addEventListener('mouseup', ()=>{ isDragging = false; });
+    canvas.addEventListener('mouseleave', ()=>{ isDragging = false; });
 
-    canvas.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
-
-    canvas.addEventListener('wheel', (e) => {
+    canvas.addEventListener('wheel', (e)=>{
       e.preventDefault();
       camera.z += e.deltaY * 0.5;
-      camera.z = Math.max(-800, Math.min(-100, camera.z));
-    });
+      camera.z = Math.max(-1200, Math.min(-80, camera.z));
+    }, { passive:false });
 
-    canvas.addEventListener('click', (e) => {
+    // click: select planet if not dragging; in mission mode -> shoot
+    let missionAimLock = false;
+    canvas.addEventListener('click', (e)=>{
       if (isDragging) return;
-      
       const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
 
-      Object.entries(celestialBodies).forEach(([key, body]) => {
-        if (key === 'sun') return;
-        
-        const projected = project3D(body.x, body.y, body.z);
-        const distance = Math.sqrt(
-          Math.pow(mouseX - projected.x, 2) + 
-          Math.pow(mouseY - projected.y, 2)
-        );
+      // mission mode: shoot towards clicked 2D position (ray cast to 3D plane y=0)
+      if (currentMode === 'mission' && missionActive){
+        // tworzymy pocisk z kamery center w kierunku punktu
+        // odczytujemy wektor w przestrzeni 3D przez odwrotną projekcję (przybliżenie)
+        // do uproszczenia: transformujemy punkt 2D na kierunek w płaszczyźnie z=0
+        // oblicz punk docelowy w układzie świata: przyjmujemy, że kliknięty punkt odpowiada pewnemu (x,z) dla y=0
+        // odtworzymy przybliżenie odwrotne:
+        const xCameraSpace = (mx - width/2) / 300;
+        const yCameraSpace = (my - height/2) / 300;
+        // obrót odwrotnie jak w project3D
+        // odtworzyć z = 300*(1/scale) - 300 ; przyjmujemy zDepth = 200
+        const zDepth = 200;
+        let x = xCameraSpace * (300 + zDepth);
+        let y = yCameraSpace * (300 + zDepth);
+        let z = zDepth;
+        // odwróć rotacje kamery (spróbujmy uproszczonego podejścia)
+        // obracamy o -rotY i -rotX
+        const cosY = Math.cos(-camera.rotY), sinY = Math.sin(-camera.rotY);
+        const cosX = Math.cos(-camera.rotX), sinX = Math.sin(-camera.rotX);
+        // rotY
+        let rx = x * cosY - z * sinY;
+        let rz = x * sinY + z * cosY;
+        x = rx; z = rz;
+        // rotX
+        let ry = y * cosX - z * sinX;
+        rz = y * sinX + z * cosX;
+        y = ry; z = rz;
+        // global coords relative to camera center
+        const worldX = x + camera.x;
+        const worldZ = z + camera.z; // camera.z is negative usually
+        // tworzymy pocisk startujący z kamery przybliżonej pozycji (0,0)
+        // przybliżenie: start w (0,0) = środek układu; lepiej: spawn z miejsca kamery (0,0,-camera.z)
+        const startX = 0;
+        const startZ = -camera.z - 30; // przesunięcie
+        // wektor kierunku
+        const vx = (worldX - startX) / 30;
+        const vz = (worldZ - startZ) / 30;
+        projectiles.push({ x: startX, z: startZ, vx: vx, vz: vz });
+        return;
+      }
 
-        if (distance < body.radius * projected.scale) {
+      // normal: wybór planety
+      Object.entries(celestialBodies).forEach(([key,body])=>{
+        if (key==='sun' || key==='star') return;
+        const proj = project3D(body.x, body.y, body.z);
+        const dist = Math.sqrt(Math.pow(mx - proj.x,2) + Math.pow(my - proj.y,2));
+        if (dist < body.radius * proj.scale){
           selectPlanet(key);
         }
       });
     });
 
-    document.getElementById('orbit-toggle').addEventListener('click', function() {
-      showOrbits = !showOrbits;
-      this.classList.toggle('active');
-      this.textContent = showOrbits ? 'Ukryj Orbity' : 'Pokaż Orbity';
-    });
+    // --- UI: Landing, Menu, Start flow --- //
+    const landing = document.getElementById('landing');
+    const landingTitle = document.getElementById('landing-title');
+    const startBtn = document.getElementById('start-btn');
+    const menuOverlay = document.getElementById('menu-overlay');
+    const menuSystems = document.getElementById('menu-systems');
+    const menuModes = document.getElementById('menu-modes');
+    const proceedBtn = document.getElementById('proceed-btn');
 
-    // Obsługa selektora układów
-    document.querySelectorAll('.system-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const system = this.dataset.system;
-        switchSystem(system);
-      });
-    });
-
-    // Obsługa selektora trybów
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const mode = this.dataset.mode;
-        switchMode(mode);
-      });
-    });
-
-    // Obsługa przycisków planet
-    document.querySelectorAll('.planet-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const planet = this.dataset.planet;
-        selectPlanet(planet);
-      });
-    });
-
-    // Obsługa panelu misji
-    document.querySelector('.close-btn').addEventListener('click', function() {
-      document.getElementById('mission-panel').classList.remove('active');
-    });
-
-    // Obsługa terraformacji
-    document.querySelectorAll('.terraform-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const action = this.dataset.action;
-        performTerraform(action);
-      });
-    });
-
-    function switchSystem(systemKey) {
-      currentSystem = systemKey;
-      celestialBodies = planetarySystems[systemKey].bodies;
-      
-      document.querySelectorAll('.system-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.system === systemKey) {
-          btn.classList.add('active');
-        }
-      });
-
-      // Aktualizuj przyciski planet
-      updatePlanetButtons();
-      
-      // Wybierz pierwszą planetę
-      const firstPlanet = Object.keys(celestialBodies).find(key => key !== 'sun' && key !== 'star');
-      if (firstPlanet) {
-        selectPlanet(firstPlanet);
-      }
-    }
-
-    function switchMode(mode) {
-      currentMode = mode;
-      
-      document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.mode === mode) {
-          btn.classList.add('active');
-        }
-      });
-
-      const missionPanel = document.getElementById('mission-panel');
-      const terraformControls = document.querySelector('.terraform-controls');
-      
-      if (mode === 'mission') {
-        missionPanel.classList.add('active');
-        terraformControls.style.display = 'none';
-        startMission();
-      } else if (mode === 'terraform') {
-        missionPanel.classList.add('active');
-        terraformControls.style.display = 'flex';
-        startTerraform();
+    // animacja tytułu: powiększanie i fadein. Gdy skala >= threshold -> pokaż start.
+    let landingScale = 0.3;
+    let landingOpacity = 0;
+    let landingDone = false;
+    function animateLanding(){
+      landingScale += 0.006;
+      landingOpacity += 0.01;
+      landingTitle.style.transform = `scale(${landingScale}) translateZ(0)`;
+      landingTitle.style.opacity = Math.min(1, landingOpacity);
+      if (landingScale >= 1.05 && !landingDone){
+        landingDone = true;
+        startBtn.style.display = 'inline-block';
+        // lekki puls
+        landingTitle.animate([{transform:`scale(${landingScale})`},{transform:`scale(${landingScale*1.06})`},{transform:`scale(${landingScale})`}], { duration:1500, iterations: Infinity });
       } else {
-        missionPanel.classList.remove('active');
+        requestAnimationFrame(animateLanding);
       }
     }
+    animateLanding();
 
-    function updatePlanetButtons() {
+    // START button
+    startBtn.addEventListener('click', ()=>{
+      // przejście: schowaj landing i pokaż menu
+      landing.style.transition = 'opacity 0.6s ease';
+      landing.style.opacity = '0';
+      setTimeout(()=>{ landing.style.display = 'none'; showMenu(); }, 620);
+    });
+
+    // generowanie kafelków w menu
+    function populateMenu(){
+      menuSystems.innerHTML = '';
+      Object.keys(planetarySystems).forEach(key=>{
+        const s = planetarySystems[key];
+        const tile = document.createElement('div');
+        tile.className = 'select-tile';
+        tile.dataset.system = key;
+        tile.textContent = s.name;
+        tile.addEventListener('click', ()=> {
+          document.querySelectorAll('#menu-systems .select-tile').forEach(t=>t.classList.remove('active'));
+          tile.classList.add('active');
+          selectedMenuSystem = key;
+        });
+        menuSystems.appendChild(tile);
+      });
+
+      const modes = [
+        { key:'education', name:'Tryb Edukacyjny' },
+        { key:'mission', name:'Tryb Misji' },
+        { key:'terraform', name:'Terraformacja' }
+      ];
+      menuModes.innerHTML = '';
+      modes.forEach(m=>{
+        const tile = document.createElement('div');
+        tile.className = 'select-tile';
+        tile.dataset.mode = m.key;
+        tile.textContent = m.name;
+        tile.addEventListener('click', ()=> {
+          document.querySelectorAll('#menu-modes .select-tile').forEach(t=>t.classList.remove('active'));
+          tile.classList.add('active');
+          selectedMenuMode = m.key;
+        });
+        menuModes.appendChild(tile);
+      });
+    }
+
+    let selectedMenuSystem = 'solar';
+    let selectedMenuMode = 'education';
+    function showMenu(){
+      populateMenu();
+      // aktywuj domyślnie wybrane
+      const sysTile = document.querySelector(`#menu-systems .select-tile[data-system="${selectedMenuSystem}"]`);
+      if (sysTile) sysTile.classList.add('active');
+      const modeTile = document.querySelector(`#menu-modes .select-tile[data-mode="${selectedMenuMode}"]`);
+      if (modeTile) modeTile.classList.add('active');
+      menuOverlay.style.display = 'flex';
+    }
+
+    proceedBtn.addEventListener('click', ()=>{
+      // pobierz wybory i przejdź do gry
+      currentSystem = selectedMenuSystem;
+      currentMode = selectedMenuMode;
+      // ustaw model ciał
+      celestialBodies = planetarySystems[currentSystem].bodies;
+      // ustaw kamerę na rzut z góry
+      camera.rotX = -Math.PI/2 + 0.02; // prawie top-down
+      camera.rotY = 0;
+      camera.z = -600;
+      // zamknij menu
+      menuOverlay.style.display = 'none';
+      // zachowaj UI zależnie od trybu
+      if (currentMode === 'mission'){
+        missionActive = true;
+        wave = 0; score = 0; resources = 0; aliens = []; projectiles = [];
+        startWave();
+        setInterval(()=>{ if (missionActive) startWave(); }, 20000); // co 20s następna fala
+      } else {
+        missionActive = false;
+      }
+      if (currentMode === 'terraform'){
+        terraformStage = 0;
+        // terraform: pokaż terraform-controls (jeśli chcesz więcej, można rozbudować)
+        // Udostępniamy terraform kontrolki w mission-ui jako uproszczenie
+      }
+      updatePlanetButtons();
+      selectFirstPlanetAfterSwitch();
+      updateMissionUI();
+    });
+
+    // --- Controls które już miałeś (przyciski planet, orbit toggle) --- //
+    document.getElementById('orbit-toggle').addEventListener('click', function(){ showOrbits = !showOrbits; this.classList.toggle('active'); this.textContent = showOrbits ? 'Ukryj Orbity' : 'Pokaż Orbity'; });
+
+    function updatePlanetButtons(){
       const planetButtons = document.getElementById('planet-buttons');
       planetButtons.innerHTML = '';
-      
-      Object.entries(celestialBodies).forEach(([key, body]) => {
-        if (key !== 'sun' && key !== 'star') {
-          const btn = document.createElement('button');
-          btn.className = 'planet-btn';
-          btn.dataset.planet = key;
-          btn.textContent = body.name;
-          btn.addEventListener('click', function() {
-            selectPlanet(key);
-          });
-          planetButtons.appendChild(btn);
-        }
+      Object.entries(celestialBodies).forEach(([key,body])=>{
+        if (key==='sun' || key==='star') return;
+        const btn = document.createElement('button');
+        btn.className = 'planet-btn';
+        btn.dataset.planet = key;
+        btn.textContent = body.name;
+        btn.addEventListener('click', ()=> selectPlanet(key));
+        planetButtons.appendChild(btn);
       });
     }
 
-    function selectPlanet(planetKey) {
+    function selectFirstPlanetAfterSwitch(){
+      const first = Object.keys(celestialBodies).find(k => k!=='sun' && k!=='star');
+      if (first) selectPlanet(first);
+    }
+
+    function selectPlanet(planetKey){
       selectedPlanet = planetKey;
       const body = celestialBodies[planetKey];
-      
       if (!body) return;
-      
-      document.querySelectorAll('.planet-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.planet === planetKey) {
-          btn.classList.add('active');
-        }
-      });
-
+      document.querySelectorAll('.planet-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.planet === planetKey));
       document.getElementById('planet-name').textContent = body.name;
-      document.getElementById('planet-diameter').textContent = body.diameter;
-      document.getElementById('planet-distance').textContent = body.distance;
-      document.getElementById('planet-period').textContent = body.period;
-      document.getElementById('planet-temp').textContent = body.temp;
-      document.getElementById('planet-description').textContent = body.description;
-
-      if (currentMode === 'mission') {
-        updateMissionForPlanet(body);
-      }
+      document.getElementById('planet-diameter').textContent = body.diameter || '-';
+      document.getElementById('planet-distance').textContent = body.distance || '-';
+      document.getElementById('planet-period').textContent = body.period || '-';
+      document.getElementById('planet-temp').textContent = body.temp || '-';
+      document.getElementById('planet-description').textContent = body.description || '';
+      if (currentMode === 'mission') updateMissionForPlanet(body);
     }
 
-    function startMission() {
-      missionProgress = 0;
-      const progressBar = document.querySelector('.mission-progress-bar');
-      progressBar.style.width = '0%';
-      
-      document.querySelector('.mission-title').textContent = 'Misja: Eksploracja Kosmosu';
-      document.getElementById('mission-content').innerHTML = 
-        '<p>Wybierz planetę do zbadania i kliknij na nią, aby rozpocząć misję!</p>';
+    // Mission / terraform helpers
+    function updateMissionForPlanet(body){
+      // zmień treść panelu misji (tutaj uproszczone)
+      // mission-ui widoczny
+      updateMissionUI();
     }
 
-    function updateMissionForPlanet(body) {
-      const missions = {
-        mars: {
-          title: 'Misja: Eksploracja Marsa',
-          objective: 'Zbadaj powierzchnię Marsa i znajdź ślady wody',
-          content: 'Analizujesz próbki gruntu... Znaleziono ślady minerałów hydratowanych!'
-        },
-        kepler442b: {
-          title: 'Misja: Badanie Superziemi',
-          objective: 'Oceń potencjał zamieszkiwalny planety Kepler-442b',
-          content: 'Skanowanie atmosfery... Wykryto możliwość terraformacji!'
-        },
-        proximab: {
-          title: 'Misja: Pierwsza Kolonia',
-          objective: 'Przygotuj Proxima b do pierwszej kolonii międzygwiezdnej',
-          content: 'Badanie stabilności orbity... Planeta nadaje się do kolonizacji!'
-        }
-      };
-
-      const mission = missions[selectedPlanet] || {
-        title: 'Misja: Eksploracja',
-        objective: 'Zbadaj wybraną planetę',
-        content: 'Rozpoczynasz badanie tej fascynującej planety...'
-      };
-
-      document.querySelector('.mission-title').textContent = mission.title;
-      document.querySelector('.mission-objective strong').nextSibling.textContent = ' ' + mission.objective;
-      document.getElementById('mission-content').innerHTML = `<p>${mission.content}</p>`;
-
-      // Symuluj postęp misji
-      missionProgress = Math.min(missionProgress + 25, 100);
-      document.querySelector('.mission-progress-bar').style.width = missionProgress + '%';
-    }
-
-    function startTerraform() {
-      terraformStage = 0;
-      document.querySelector('.mission-title').textContent = 'Symulacja Terraformacji';
-      document.querySelector('.mission-objective strong').nextSibling.textContent = ' Przekształć planetę w nadającą się do zamieszkania';
-      document.getElementById('mission-content').innerHTML = 
-        '<p>Wybierz planetę i użyj narzędzi terraformacji, aby uczynić ją nadającą się do życia!</p>';
-    }
-
-    function performTerraform(action) {
+    // Terraform actions (przyciski dodałem do mission-content w twoim oryginalnym panele misji — ale tu uproszczone)
+    function performTerraform(action){
       const body = celestialBodies[selectedPlanet];
-      if (!body || !body.terraformable) {
-        document.getElementById('mission-content').innerHTML = 
-          '<p style="color: #ff6b6b;">Ta planeta nie nadaje się do terraformacji!</p>';
+      if (!body || !body.terraformable){
+        alert('Ta planeta nie nadaje się do terraformacji.');
         return;
       }
-
-      terraformStage++;
-      
-      const actions = {
-        atmosphere: () => {
-          body.atmosphere = true;
-          return 'Dodano atmosferę! Planeta może teraz zatrzymywać ciepło.';
-        },
-        water: () => {
-          body.water = true;
-          return 'Wprowadzono wodę! Podstawa dla życia została stworzona.';
-        },
-        vegetation: () => {
-          if (body.atmosphere && body.water) {
-            body.life = true;
-            return 'Zasadzono roślinność! Planeta produkuje teraz tlen.';
-          }
-          return 'Potrzebujesz najpierw atmosfery i wody!';
-        },
-        temperature: () => {
-          const temp = parseInt(body.temp);
-          body.temp = Math.max(-50, temp + 30) + '°C';
-          return `Podgrzano planetę! Nowa temperatura: ${body.temp}`;
-        }
-      };
-
-      const result = actions[action]();
-      document.getElementById('mission-content').innerHTML = `<p style="color: #4caf50;">${result}</p>`;
-      
-      // Aktualizuj informacje o planecie
-      selectPlanet(selectedPlanet);
-      
-      // Aktualizuj postęp
-      const progress = Math.min(terraformStage * 25, 100);
-      document.querySelector('.mission-progress-bar').style.width = progress + '%';
-      
-      if (progress === 100) {
-        document.getElementById('mission-content').innerHTML += 
-          '<p style="color: #ffc107; font-weight: bold;">Gratulacje! Terraformacja zakończona sukcesem!</p>';
+      if (action === 'asteroid' && resources > 0){
+        // wydobądź surowce
+        resources -= 1;
+        terraformStage += 1;
+        // drobna zmiana: dodaj atmosferę po etapie 1, wodę po 2, vegetation po 3, mirror po 4
+        if (terraformStage === 1) { body.atmosphere = true; }
+        else if (terraformStage === 2) { body.water = true; }
+        else if (terraformStage === 3) { body.life = true; }
+        else if (terraformStage >= 4) { body.temp = (parseInt(body.temp)||-50) + 20 + '°C'; }
+        updateMissionUI();
+        selectPlanet(selectedPlanet);
+      } else if (action === 'mine'){
+        // generuj zasoby
+        resources += 2;
+        updateMissionUI();
+      } else {
+        alert('Brak zasobów lub nieznana akcja.');
       }
     }
 
-    async function onConfigChange(config) {
-      const customFont = config.font_family || defaultConfig.font_family;
-      const baseFontStack = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif';
-      const fontFamily = `${customFont}, ${baseFontStack}`;
-      const baseSize = config.font_size || defaultConfig.font_size;
+    // expose terraform buttons via keyboard shortcuts for demo:
+    document.addEventListener('keydown', (e)=>{
+      if (e.key === '1') performTerraform('mine');
+      if (e.key === '2') performTerraform('asteroid');
+    });
 
-      document.body.style.fontFamily = fontFamily;
-      document.body.style.background = config.background_color || defaultConfig.background_color;
-      document.body.style.color = config.text_color || defaultConfig.text_color;
-
-      document.getElementById('title').textContent = config.game_title || defaultConfig.game_title;
-      document.getElementById('title').style.fontSize = `${baseSize * 1.75}px`;
-      document.getElementById('title').style.fontFamily = fontFamily;
-
-      document.getElementById('subtitle').textContent = config.welcome_message || defaultConfig.welcome_message;
-      document.getElementById('subtitle').style.fontSize = `${baseSize * 0.875}px`;
-      document.getElementById('subtitle').style.fontFamily = fontFamily;
-
-      celestialBodies.earth.description = config.earth_description || defaultConfig.earth_description;
-      celestialBodies.moon.description = config.moon_description || defaultConfig.moon_description;
-      celestialBodies.mars.description = config.mars_description || defaultConfig.mars_description;
-
-      if (selectedPlanet) {
-        document.getElementById('planet-description').textContent = celestialBodies[selectedPlanet].description;
-      }
-
-      const primaryColor = config.primary_color || defaultConfig.primary_color;
-      const accentColor = config.accent_color || defaultConfig.accent_color;
-      const panelColor = config.panel_color || defaultConfig.panel_color;
-
-      document.getElementById('info-panel').style.background = panelColor;
-      document.getElementById('controls-panel').style.background = panelColor;
-
-      document.getElementById('planet-name').style.color = primaryColor;
-      document.getElementById('planet-name').style.fontSize = `${baseSize * 1.5}px`;
-      document.getElementById('planet-name').style.fontFamily = fontFamily;
-
-      document.querySelectorAll('.info-row').forEach(row => {
-        row.style.fontSize = `${baseSize * 0.875}px`;
-      });
-
-      document.getElementById('planet-description').style.fontSize = `${baseSize * 0.8125}px`;
-      document.getElementById('planet-description').style.fontFamily = fontFamily;
-
-      document.querySelector('.control-title').style.fontSize = `${baseSize}px`;
-      document.querySelector('.control-title').style.fontFamily = fontFamily;
-
-      document.querySelectorAll('.control-item').forEach(item => {
-        item.style.fontSize = `${baseSize * 0.8125}px`;
-      });
-
-      document.querySelectorAll('.planet-btn').forEach(btn => {
-        btn.style.background = `rgba(79, 195, 247, 0.2)`;
-        btn.style.borderColor = primaryColor;
-        btn.style.fontSize = `${baseSize * 0.875}px`;
-        btn.style.fontFamily = fontFamily;
-      });
-
-      document.querySelector('.planet-btn.active').style.background = primaryColor;
-
-      document.getElementById('orbit-toggle').style.borderColor = accentColor;
-      document.getElementById('orbit-toggle').style.fontSize = `${baseSize * 0.8125}px`;
-      document.getElementById('orbit-toggle').style.fontFamily = fontFamily;
-      
-      if (showOrbits) {
-        document.getElementById('orbit-toggle').style.background = accentColor;
-      }
+    // --- Initial setup i start render --- //
+    function init(){
+      celestialBodies = planetarySystems.solar.bodies;
+      updatePlanetButtons();
+      selectPlanet('earth');
+      render();
     }
+    init();
 
-    if (window.elementSdk) {
-      window.elementSdk.init({
-        defaultConfig: defaultConfig,
-        onConfigChange: onConfigChange,
-        mapToCapabilities: (config) => ({
-          recolorables: [
-            {
-              get: () => config.background_color || defaultConfig.background_color,
-              set: (value) => {
-                config.background_color = value;
-                window.elementSdk.setConfig({ background_color: value });
-              }
-            },
-            {
-              get: () => config.panel_color || defaultConfig.panel_color,
-              set: (value) => {
-                config.panel_color = value;
-                window.elementSdk.setConfig({ panel_color: value });
-              }
-            },
-            {
-              get: () => config.text_color || defaultConfig.text_color,
-              set: (value) => {
-                config.text_color = value;
-                window.elementSdk.setConfig({ text_color: value });
-              }
-            },
-            {
-              get: () => config.primary_color || defaultConfig.primary_color,
-              set: (value) => {
-                config.primary_color = value;
-                window.elementSdk.setConfig({ primary_color: value });
-              }
-            },
-            {
-              get: () => config.accent_color || defaultConfig.accent_color,
-              set: (value) => {
-                config.accent_color = value;
-                window.elementSdk.setConfig({ accent_color: value });
-              }
-            }
-          ],
-          borderables: [],
-          fontEditable: {
-            get: () => config.font_family || defaultConfig.font_family,
-            set: (value) => {
-              config.font_family = value;
-              window.elementSdk.setConfig({ font_family: value });
-            }
-          },
-          fontSizeable: {
-            get: () => config.font_size || defaultConfig.font_size,
-            set: (value) => {
-              config.font_size = value;
-              window.elementSdk.setConfig({ font_size: value });
-            }
-          }
-        }),
-        mapToEditPanelValues: (config) => new Map([
-          ["game_title", config.game_title || defaultConfig.game_title],
-          ["welcome_message", config.welcome_message || defaultConfig.welcome_message],
-          ["education_mode_title", config.education_mode_title || defaultConfig.education_mode_title],
-          ["mission_mode_title", config.mission_mode_title || defaultConfig.mission_mode_title],
-          ["terraform_mode_title", config.terraform_mode_title || defaultConfig.terraform_mode_title]
-        ])
-      });
-    }
+    // periodic resource spawn (asteroid mining passive)
+    setInterval(()=>{ if (currentMode==='terraform') spawnAsteroidResource(); }, 8000);
 
-    // Inicjalizacja
-    updatePlanetButtons();
-    selectPlanet('earth');
-    render();
+    // exposes for debugging (opcjonalne)
+    window._G = {
+      planetarySystems, celestialBodies, aliens, projectiles, startWave, performTerraform
+    };
+
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'996bae0d8103c137',t:'MTc2MTgzNTM1My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ </body>
 </html>
